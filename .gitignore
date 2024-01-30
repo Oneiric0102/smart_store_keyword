@@ -1,0 +1,6 @@
+secrets.json
+__pycache__/
+test.py
+category_cid.json
+*.xlsx
+chromedriver.exe
