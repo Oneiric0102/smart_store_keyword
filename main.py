@@ -3,16 +3,16 @@ import json
 from bs4 import BeautifulSoup
 import datetime as dt
 import time
-import pandas as pd
 import signiturehelper
 import os
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
-driver = webdriver.Chrome()
-driver.implicitly_wait(time_to_wait=5)
+# from selenium import webdriver
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+
+# driver = webdriver.Chrome()
+# driver.implicitly_wait(time_to_wait=5)
 
 BASE_DIR = "./"
 secret_file = os.path.join(BASE_DIR, "secrets.json")
@@ -29,9 +29,12 @@ def get_secret(setting, secrets=secrets):
         raise print(err_msg)
 
 
-ad_api_key = get_secret("API_KEY")
-ad_secret_key = get_secret("SECRET_KEY")
-ad_customer_id = get_secret("CUSTOMER_ID")
+ad_api_key = get_secret("AD_API_KEY")
+ad_secret_key = get_secret("AD_SECRET_KEY")
+ad_customer_id = get_secret("AD_CUSTOMER_ID")
+
+naver_client_id = get_secret("NAVER_CLIENT_ID")
+naver_client_secret = get_secret("NAVER_CLIENT_SECRET")
 
 headers = {
     "User-Agent": (
@@ -171,14 +174,6 @@ def nshopping_get_category(coreKeyword):
     return result
 
 
-# 네이버 쇼핑에 해당 키워드 검색시 총 제품수 추출
-def nshopping_get_total_products(coreKeyword):
-    url = "https://search.shopping.naver.com/search/all?"
-    driver.get(url + "query=" + coreKeyword)
-    element = driver.find_element(By.CLASS_NAME, "subFilter_num__S9sle").text
-    return element
-
-
 # 검색광고 api 헤더 추출용
 def get_header(method, uri, api_key, secret_key, customer_id):
     timestamp = str(round(time.time() * 1000))
@@ -228,75 +223,105 @@ def naver_searchad_api(hintKeywords):
     return api_result
 
 
+# 네이버 검색 API 사용을 통한 총 상품수 추출
+def get_total_products(coreKeyword):
+    url = "https://openapi.naver.com/v1/search/shop.json?query=" + coreKeyword
+    headers = {
+        "X-Naver-Client-Id": naver_client_id,
+        "X-Naver-Client-Secret": naver_client_secret,
+    }
+    response = requests.get(url, headers=headers).json()
+    return response["total"]
+
+
 # 전체 키워드 추출
 def get_result():
-    final_keyword_list = []
     for i in range(0, len(temp_keyword_list) // 5):
         keywords = temp_keyword_list[5 * i : 5 * i + 5]
         api_result = naver_searchad_api(keywords)
+        time.sleep(0.5)
 
         for keyword_info in api_result:
             if not keyword_info["relKeyword"] in duplicate_check_list:
                 duplicate_check_list.append(keyword_info["relKeyword"])
-                final_keyword_list.append(keyword_info["relKeyword"])
-        time.sleep(0.5)
-    return final_keyword_list
+                keyword = keyword_info["relKeyword"]
+                pcQcCnt = int(float(keyword_info["monthlyPcQcCnt"]))
+                mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
+                totalQcCnt = pcQcCnt + mobileQcCnt
+                productsCnt = int(float(get_total_products(keyword)))
+                if productsCnt > 0:
+                    category = nshopping_get_category(keyword)
+                else:
+                    category = "-"
+
+                keyword_instance = {
+                    "keyword": keyword,
+                    "pcQcCnt": pcQcCnt,
+                    "mobileQcCnt": mobileQcCnt,
+                    "totalQcCnt": totalQcCnt,
+                    "productsCnt": productsCnt,
+                    "ratio": round(productsCnt / totalQcCnt, 5),
+                    "category": category,
+                }
+                result["keywords"].append(keyword_instance)
+                print("정상작동중" + str(i))
+                time.sleep(0.5)
 
 
-# 셀러마스터 자동 입력
-def get_seller_master():
-    keyword_list = get_result()
-    keyword_list = list(set(keyword_list))
-    url = "https://whereispost.com/seller/"
+# # 셀러마스터 자동 입력/ 키워드리스트 부분 수정 필요
+# def get_seller_master():
+#     keyword_list = get_result()
+#     keyword_list = list(set(keyword_list))
+#     url = "https://whereispost.com/seller/"
 
-    driver.get(url)
+#     driver.get(url)
 
-    for i in range(0, len(keyword_list)):
-        if i % 50 == 0:
-            time.sleep(1)
-            driver.refresh()
-            keyword_input = driver.find_element(By.ID, "keyword")
-            search_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        "/html/body/content/div/div[2]/div[2]/div/div/div/div/div/div/div/form/button",
-                    )
-                )
-            )
-        keyword_input.send_keys(keyword_list[i])
-        search_button.click()
+#     for i in range(0, len(keyword_list)):
+#         if i % 50 == 0:
+#             time.sleep(1)
+#             driver.refresh()
+#             keyword_input = driver.find_element(By.ID, "keyword")
+#             search_button = WebDriverWait(driver, 10).until(
+#                 EC.element_to_be_clickable(
+#                     (
+#                         By.XPATH,
+#                         "/html/body/content/div/div[2]/div[2]/div/div/div/div/div/div/div/form/button",
+#                     )
+#                 )
+#             )
+#         keyword_input.send_keys(keyword_list[i])
+#         search_button.click()
 
-        table = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, "#result > tbody > tr")
-            )
-        )
+#         table = WebDriverWait(driver, 10).until(
+#             EC.presence_of_all_elements_located(
+#                 (By.CSS_SELECTOR, "#result > tbody > tr")
+#             )
+#         )
 
-        while len(table) < (i + 1) % 50:
-            table = WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, "#result > tbody > tr")
-                )
-            )
+#         while len(table) < (i + 1) % 50:
+#             table = WebDriverWait(driver, 10).until(
+#                 EC.presence_of_all_elements_located(
+#                     (By.CSS_SELECTOR, "#result > tbody > tr")
+#                 )
+#             )
 
-        row = driver.find_element(By.CSS_SELECTOR, "#result > tbody >tr ").text
-        data = row[2:].split(" ")
-        if int(float(data[4].replace(",", ""))) > 0:
-            category = nshopping_get_category(data[0])
-        else:
-            category = "-"
+#         row = driver.find_element(By.CSS_SELECTOR, "#result > tbody >tr ").text
+#         data = row[2:].split(" ")
+#         if int(float(data[4].replace(",", ""))) > 0:
+#             category = nshopping_get_category(data[0])
+#         else:
+#             category = "-"
 
-        keyword = {
-            "keyword": data[0],
-            "pcQcCnt": int(float(data[1].replace(",", ""))),
-            "mobileQcCnt": int(float(data[2].replace(",", ""))),
-            "totalQcCnt": int(float(data[3].replace(",", ""))),
-            "productsCnt": int(float(data[4].replace(",", ""))),
-            "ratio": float(data[5]),
-            "category": category,
-        }
-        result["keywords"].append(keyword)
+#         keyword = {
+#             "keyword": data[0],
+#             "pcQcCnt": int(float(data[1].replace(",", ""))),
+#             "mobileQcCnt": int(float(data[2].replace(",", ""))),
+#             "totalQcCnt": int(float(data[3].replace(",", ""))),
+#             "productsCnt": int(float(data[4].replace(",", ""))),
+#             "ratio": float(data[5]),
+#             "category": category,
+#         }
+#         result["keywords"].append(keyword)
 
 
 search_keyword = input("메인 키워드 입력: ")
@@ -309,7 +334,7 @@ nshopping_rel_keyword(search_keyword)
 nshopping_keyword(search_keyword)
 nshopping_insight_top500(search_cid)
 temp_keyword_list = list(set(temp_keyword_list))
-get_seller_master()
+get_result()
 
 file_path = "./" + search_keyword + ".json"
 with open(file_path, "w") as outfile:
