@@ -5,6 +5,8 @@ import datetime as dt
 import time
 import signiturehelper
 import os
+from openpyxl import Workbook
+from openpyxl import load_workbook
 
 # from selenium import webdriver
 # from selenium.webdriver.common.by import By
@@ -233,6 +235,49 @@ def get_total_products(coreKeyword):
     response = requests.get(url, headers=headers).json()
     return response["total"]
 
+#추출한 키워드 후보들을 엑셀로 저장
+def export_temp_keyword_list(coreKeyword):
+    write_wb = Workbook()
+    write_ws = write_wb.create_sheet('Sheet1')
+    write_ws = write_wb.active
+
+    for i in range(0, len(temp_keyword_list)):
+        write_ws['A'+str(i+1)] = temp_keyword_list[i]
+    write_wb.save("./"+coreKeyword+"_temp.xlsx")
+
+#엑셀에서 키워드 리스트 불러오기
+def import_temp_keyword_list(coreKeyword):
+    load_wb = load_workbook("./"+coreKeyword+"_temp.xlsx", data_only=True)
+    load_ws = load_wb['Sheet1']
+    excel_keyword_list = load_ws.columns[1]
+    return excel_keyword_list
+
+#최종 결과를 엑샐로 저장
+def export_result(coreKeyword):
+    write_wb = Workbook()
+    write_ws = write_wb.create_sheet('Sheet1')
+    write_ws = write_wb.active
+    write_ws.append([
+        "keyword", 
+        "pcQcCnt", 
+        "mobileQcCnt", 
+        "totalQcCnt", 
+        "productsCnt", 
+        "ratio", 
+        "category"
+    ])
+
+    for keyword_info in result["keywords"]:
+        write_ws.append([
+            keyword_info["keyword"],
+            keyword_info["pcQcCnt"],
+            keyword_info["mobileQcCnt"],
+            keyword_info["totalQcCnt"],
+            keyword_info["productsCnt"],
+            keyword_info["ratio"],
+            keyword_info["category"]
+        ])
+    write_wb.save("./"+coreKeyword+".xlsx")
 
 # 전체 키워드 추출
 def get_result():
