@@ -239,7 +239,7 @@ def get_result():
     for i in range(0, len(temp_keyword_list) // 5):
         keywords = temp_keyword_list[5 * i : 5 * i + 5]
         api_result = naver_searchad_api(keywords)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         for keyword_info in api_result:
             if not keyword_info["relKeyword"] in duplicate_check_list:
@@ -249,9 +249,10 @@ def get_result():
                 mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
                 totalQcCnt = pcQcCnt + mobileQcCnt
                 productsCnt = int(float(get_total_products(keyword)))
-                if productsCnt > 0:
+                print(keyword + " " + str(productsCnt))
+                try:
                     category = nshopping_get_category(keyword)
-                else:
+                except:
                     category = "-"
 
                 keyword_instance = {
@@ -264,8 +265,7 @@ def get_result():
                     "category": category,
                 }
                 result["keywords"].append(keyword_instance)
-                print("정상작동중" + str(i))
-                time.sleep(0.5)
+                time.sleep(0.1)
 
 
 # # 셀러마스터 자동 입력/ 키워드리스트 부분 수정 필요
