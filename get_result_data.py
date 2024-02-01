@@ -49,6 +49,7 @@ keyword_base = {
 result = {"keywords": []}
 duplicate_check_list = []
 
+
 # 검색광고 api 헤더 추출용
 def get_header(method, uri, api_key, secret_key, customer_id):
     timestamp = str(round(time.time() * 1000))
@@ -87,8 +88,8 @@ def naver_searchad_api(hintKeywords):
 
     keyword_list = response["keywordList"]
 
-    api_result = []
-    for i in range(0, min(100, len(keyword_list))):
+    api_result = keyword_list[0 : len(hintKeywords)]
+    for i in range(len(hintKeywords) + 1, min(100, len(keyword_list))):
         keyword = keyword_list[i]
         if keyword["monthlyMobileQcCnt"] == "< 10":
             continue
@@ -96,6 +97,7 @@ def naver_searchad_api(hintKeywords):
             api_result.append(keyword)
 
     return api_result
+
 
 # 네이버 쇼핑에 해당 키워드 검색시 상단 노출 제품 카테고리 추출
 def nshopping_get_category(coreKeyword):
@@ -117,6 +119,7 @@ def nshopping_get_category(coreKeyword):
     result = ">".join(categories)
     return result
 
+
 # 네이버 검색 API 사용을 통한 총 상품수 추출
 def get_total_products(coreKeyword):
     url = "https://openapi.naver.com/v1/search/shop.json?query=" + coreKeyword
@@ -127,41 +130,48 @@ def get_total_products(coreKeyword):
     response = requests.get(url, headers=headers).json()
     return response["total"]
 
-#엑셀에서 키워드 리스트 불러오기
+
+# 엑셀에서 키워드 리스트 불러오기
 def import_temp_keyword_list(coreKeyword):
-    load_wb = load_workbook("./"+coreKeyword+"_temp.xlsx", data_only=True)
-    load_ws = load_wb['Sheet1']
+    load_wb = load_workbook("./" + coreKeyword + "_temp.xlsx", data_only=True)
+    load_ws = load_wb["Sheet1"]
     temp_keyword_list = []
     for keyword in load_ws["A"]:
         print(keyword.value)
         temp_keyword_list.append(keyword.value)
     return temp_keyword_list
 
-#최종 결과를 엑샐로 저장
+
+# 최종 결과를 엑셀로 저장
 def export_result(coreKeyword):
     write_wb = Workbook()
-    write_ws = write_wb.create_sheet('Sheet1')
+    write_ws = write_wb.create_sheet("Sheet1")
     write_ws = write_wb.active
-    write_ws.append([
-        "keyword", 
-        "pcQcCnt", 
-        "mobileQcCnt", 
-        "totalQcCnt", 
-        "productsCnt", 
-        "ratio", 
-        "category"
-    ])
+    write_ws.append(
+        [
+            "keyword",
+            "pcQcCnt",
+            "mobileQcCnt",
+            "totalQcCnt",
+            "productsCnt",
+            "ratio",
+            "category",
+        ]
+    )
     for keyword_info in result["keywords"]:
-        write_ws.append([
-            keyword_info["keyword"],
-            keyword_info["pcQcCnt"],
-            keyword_info["mobileQcCnt"],
-            keyword_info["totalQcCnt"],
-            keyword_info["productsCnt"],
-            keyword_info["ratio"],
-            keyword_info["category"]
-        ])
-    write_wb.save("./"+coreKeyword+".xlsx")
+        write_ws.append(
+            [
+                keyword_info["keyword"],
+                keyword_info["pcQcCnt"],
+                keyword_info["mobileQcCnt"],
+                keyword_info["totalQcCnt"],
+                keyword_info["productsCnt"],
+                keyword_info["ratio"],
+                keyword_info["category"],
+            ]
+        )
+    write_wb.save("./" + coreKeyword + ".xlsx")
+
 
 # 전체 키워드 추출
 def get_result(coreKeyword):
@@ -175,8 +185,14 @@ def get_result(coreKeyword):
             if not keyword_info["relKeyword"] in duplicate_check_list:
                 duplicate_check_list.append(keyword_info["relKeyword"])
                 keyword = keyword_info["relKeyword"]
-                pcQcCnt = int(float(keyword_info["monthlyPcQcCnt"]))
-                mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
+                if keyword_info["monthlyPcQcCnt"] == "< 10":
+                    pcQcCnt = 10
+                else:
+                    pcQcCnt = int(float(keyword_info["monthlyPcQcCnt"]))
+                if keyword_info["monthlyMobileQcCnt"] == "< 10":
+                    mobileQcCnt = 10
+                else:
+                    mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
                 totalQcCnt = pcQcCnt + mobileQcCnt
                 productsCnt = int(float(get_total_products(keyword)))
                 print(keyword + " " + str(productsCnt))
@@ -196,6 +212,7 @@ def get_result(coreKeyword):
                 }
                 result["keywords"].append(keyword_instance)
                 time.sleep(0.1)
+
 
 search_keyword = input("메인 키워드 입력: ")
 get_result(search_keyword)
