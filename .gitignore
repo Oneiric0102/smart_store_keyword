@@ -6,3 +6,5 @@ category_cid.json
 chromedriver.exe
 *.json
 *.spec
+dist/
+build/

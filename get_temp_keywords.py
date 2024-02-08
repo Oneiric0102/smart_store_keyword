@@ -5,6 +5,7 @@ import datetime as dt
 import time
 from openpyxl import Workbook
 from openpyxl import load_workbook
+import os
 
 headers = {
     "User-Agent": (
@@ -14,12 +15,13 @@ headers = {
 
 temp_keyword_list = []
 
+
 # 네이버 검색 자동완성어 추출
 def naver_search_keyword(coreKeyword):
     url = f"https://ac.search.naver.com/nx/ac?q={coreKeyword}&con=0&frm=nv&ans=2&r_format=json&r_enc=UTF-8&r_unicode=0&t_koreng=1&run=2&rev=4&q_enc=UTF-8&st=100&_callback=_jsonp_5"
 
     response = requests.get(url, headers=headers)
-    json_string = response.text.split("(")[1].replace(")", "")
+    json_string = response.text[9:-1]
     auto_keywords = json.loads(json_string)  # dict로 변환
 
     for auto_words in auto_keywords["items"]:
@@ -73,9 +75,15 @@ def nshopping_rel_keyword(coreKeyword):
 def nshopping_insight_top500(cid):
     date = dt.datetime.now()
     startDate = (
-        str(date.year - 1) + "-" + str(date.month).zfill(2) + "-" + str(date.day)
+        str(date.year - 1)
+        + "-"
+        + str(date.month).zfill(2)
+        + "-"
+        + str(date.day).zfill(2)
     )
-    endDate = str(date.year) + "-" + str(date.month).zfill(2) + "-" + str(date.day)
+    endDate = (
+        str(date.year) + "-" + str(date.month).zfill(2) + "-" + str(date.day).zfill(2)
+    )
     url = "https://datalab.naver.com/shoppingInsight/getCategoryKeywordRank.naver"
     headers = {
         "Referer": ("https://datalab.naver.com/shoppingInsight/sCategory.naver"),
@@ -83,15 +91,6 @@ def nshopping_insight_top500(cid):
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36(KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36"
         ),
         "Content-Type": ("application/x-www-form-urlencoded; charset=UTF-8"),
-    }
-
-    data = {
-        "cid": str(cid),
-        "timeUnit": "date",
-        "startDate": startDate,
-        "endDate": endDate,
-        "page": str(1),
-        "count": "20",
     }
 
     for page in range(1, 26):
@@ -109,18 +108,22 @@ def nshopping_insight_top500(cid):
             temp_keyword_list.append(keyword_info["keyword"].replace(" ", ""))
         time.sleep(0.5)
 
-#추출한 키워드 후보들을 엑셀로 저장
+
+# 추출한 키워드 후보들을 엑셀로 저장
 def export_temp_keyword_list(coreKeyword):
     write_wb = Workbook()
-    write_ws = write_wb.create_sheet('Sheet1')
+    write_ws = write_wb.create_sheet("Sheet1")
     write_ws = write_wb.active
 
     for i in range(0, len(temp_keyword_list)):
-        write_ws['A'+str(i+1)] = temp_keyword_list[i]
-    write_wb.save("./"+coreKeyword+"_temp.xlsx")
+        write_ws["A" + str(i + 1)] = temp_keyword_list[i]
+    write_wb.save("./" + coreKeyword + "_temp.xlsx")
+
 
 search_keyword = input("메인 키워드 입력: ")
 search_cid = input("카테고리 cid 입력: ")
+
+temp_keyword_list.append(search_keyword)
 
 
 naver_search_keyword(search_keyword)
@@ -130,3 +133,5 @@ nshopping_keyword(search_keyword)
 nshopping_insight_top500(search_cid)
 temp_keyword_list = list(set(temp_keyword_list))
 export_temp_keyword_list(search_keyword)
+
+os.system("pause")

@@ -1,7 +1,6 @@
 import requests
 import json
 from bs4 import BeautifulSoup
-import datetime as dt
 import time
 import signiturehelper
 import os
@@ -134,10 +133,9 @@ def get_total_products(coreKeyword):
 # 엑셀에서 키워드 리스트 불러오기
 def import_temp_keyword_list(coreKeyword):
     load_wb = load_workbook("./" + coreKeyword + "_temp.xlsx", data_only=True)
-    load_ws = load_wb["Sheet1"]
+    load_ws = load_wb["Sheet"]
     temp_keyword_list = []
     for keyword in load_ws["A"]:
-        print(keyword.value)
         temp_keyword_list.append(keyword.value)
     return temp_keyword_list
 
@@ -178,8 +176,11 @@ def get_result(coreKeyword):
     temp_keyword_list = import_temp_keyword_list(coreKeyword)
     for i in range(0, len(temp_keyword_list) // 5):
         keywords = temp_keyword_list[5 * i : 5 * i + 5]
-        api_result = naver_searchad_api(keywords)
-        time.sleep(0.1)
+        try:
+            api_result = naver_searchad_api(keywords)
+        except:
+            continue
+        time.sleep(0.5)
 
         for keyword_info in api_result:
             if not keyword_info["relKeyword"] in duplicate_check_list:
@@ -211,9 +212,11 @@ def get_result(coreKeyword):
                     "category": category,
                 }
                 result["keywords"].append(keyword_instance)
-                time.sleep(0.1)
+                time.sleep(0.5)
 
 
 search_keyword = input("메인 키워드 입력: ")
 get_result(search_keyword)
 export_result(search_keyword)
+
+os.system("pause")
