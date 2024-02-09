@@ -98,36 +98,23 @@ def naver_searchad_api(hintKeywords):
     return api_result
 
 
-# 네이버 쇼핑에 해당 키워드 검색시 상단 노출 제품 카테고리 추출
-def nshopping_get_category(coreKeyword):
-    url = "https://search.shopping.naver.com/search/all?"
-    params = {"query": coreKeyword}
-
-    resp = requests.get(url, params)
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-    category_words = soup.select("div.product_depth__I4SqY")[0]
-
-    span_soup = BeautifulSoup(str(category_words), "html.parser")
-
-    categories = [
-        span.text
-        for span in span_soup.find_all("span", class_="product_category__l4FWz")
-    ]
-
-    result = ">".join(categories)
-    return result
-
-
-# 네이버 검색 API 사용을 통한 총 상품수 추출
-def get_total_products(coreKeyword):
+# 네이버 검색 API 사용을 통한 총 상품수와 카테고리 추출
+def get_products_info(coreKeyword):
     url = "https://openapi.naver.com/v1/search/shop.json?query=" + coreKeyword
     headers = {
         "X-Naver-Client-Id": naver_client_id,
         "X-Naver-Client-Secret": naver_client_secret,
     }
     response = requests.get(url, headers=headers).json()
-    return response["total"]
+    total = response["total"]
+    if total > 0:
+        first_item = response["items"][0]
+        category = first_item["category1"]
+        for i in range(2, 5):
+            temp_category = first_item["category" + str(i)]
+            if temp_category != "":
+                category = category + " > " + temp_category
+    return {"total": total, "category": category}
 
 
 # 엑셀에서 키워드 리스트 불러오기
@@ -180,12 +167,13 @@ def get_result(coreKeyword):
             api_result = naver_searchad_api(keywords)
         except:
             continue
-        time.sleep(0.5)
+        time.sleep(0.15)
 
         for keyword_info in api_result:
             if not keyword_info["relKeyword"] in duplicate_check_list:
                 duplicate_check_list.append(keyword_info["relKeyword"])
                 keyword = keyword_info["relKeyword"]
+                products_info = get_products_info(keyword)
                 if keyword_info["monthlyPcQcCnt"] == "< 10":
                     pcQcCnt = 10
                 else:
@@ -195,12 +183,10 @@ def get_result(coreKeyword):
                 else:
                     mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
                 totalQcCnt = pcQcCnt + mobileQcCnt
-                productsCnt = int(float(get_total_products(keyword)))
-                print(keyword + " " + str(productsCnt))
-                try:
-                    category = nshopping_get_category(keyword)
-                except:
-                    category = "-"
+                productsCnt = int(float(products_info["total"]))
+                category = products_info["category"]
+                print(keyword + " ", end="")
+                print(productsCnt)
 
                 keyword_instance = {
                     "keyword": keyword,
@@ -213,6 +199,8 @@ def get_result(coreKeyword):
                 }
                 result["keywords"].append(keyword_instance)
                 time.sleep(0.5)
+            else:
+                print("skip")
 
 
 search_keyword = input("메인 키워드 입력: ")
