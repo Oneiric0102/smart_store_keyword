@@ -101,6 +101,9 @@ def nshopping_insight_top500(cid):
             "endDate": endDate,
             "page": str(page),
             "count": "20",
+            "age": "10,20,30,40,50,60",
+            "gender": "f,m",
+            "device": "pc,mo",
         }
 
         response = requests.post(url, headers=headers, data=data).json()

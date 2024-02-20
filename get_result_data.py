@@ -107,13 +107,16 @@ def get_products_info(coreKeyword):
     }
     response = requests.get(url, headers=headers).json()
     total = response["total"]
-    if total > 0:
+    try:
         first_item = response["items"][0]
         category = first_item["category1"]
         for i in range(2, 5):
             temp_category = first_item["category" + str(i)]
             if temp_category != "":
                 category = category + " > " + temp_category
+    except:
+        category = "-"
+
     return {"total": total, "category": category}
 
 
@@ -134,25 +137,29 @@ def export_result(coreKeyword):
     write_ws = write_wb.active
     write_ws.append(
         [
-            "keyword",
-            "pcQcCnt",
-            "mobileQcCnt",
-            "totalQcCnt",
-            "productsCnt",
-            "ratio",
-            "category",
+            "키워드",
+            "PC 검색량",
+            "모바일 검색량",
+            "총 검색량",
+            "상품수",
+            "비율",
+            "PC 클릭률",
+            "모바일 클릭률",
+            "카테고리",
         ]
     )
     for keyword_info in result["keywords"]:
         write_ws.append(
             [
-                keyword_info["keyword"],
-                keyword_info["pcQcCnt"],
-                keyword_info["mobileQcCnt"],
-                keyword_info["totalQcCnt"],
-                keyword_info["productsCnt"],
-                keyword_info["ratio"],
-                keyword_info["category"],
+                keyword_info["키워드"],
+                keyword_info["PC 검색량"],
+                keyword_info["모바일 검색량"],
+                keyword_info["총 검색량"],
+                keyword_info["상품수"],
+                keyword_info["비율"],
+                keyword_info["PC 클릭률"],
+                keyword_info["모바일 클릭률"],
+                keyword_info["카테고리"],
             ]
         )
     write_wb.save("./" + coreKeyword + ".xlsx")
@@ -161,8 +168,8 @@ def export_result(coreKeyword):
 # 전체 키워드 추출
 def get_result(coreKeyword):
     temp_keyword_list = import_temp_keyword_list(coreKeyword)
-    for i in range(0, len(temp_keyword_list) // 5):
-        keywords = temp_keyword_list[5 * i : 5 * i + 5]
+    for i in range(0, len(temp_keyword_list) // 5 + 1):
+        keywords = temp_keyword_list[5 * i : min(5 * i + 5, len(temp_keyword_list))]
         try:
             api_result = naver_searchad_api(keywords)
         except:
@@ -184,21 +191,25 @@ def get_result(coreKeyword):
                     mobileQcCnt = int(float(keyword_info["monthlyMobileQcCnt"]))
                 totalQcCnt = pcQcCnt + mobileQcCnt
                 productsCnt = int(float(products_info["total"]))
+                pcCtr = keyword_info["monthlyAvePcCtr"]
+                mobileCtr = keyword_info["monthlyAveMobileCtr"]
                 category = products_info["category"]
                 print(keyword + " ", end="")
                 print(productsCnt)
 
                 keyword_instance = {
-                    "keyword": keyword,
-                    "pcQcCnt": pcQcCnt,
-                    "mobileQcCnt": mobileQcCnt,
-                    "totalQcCnt": totalQcCnt,
-                    "productsCnt": productsCnt,
-                    "ratio": round(productsCnt / totalQcCnt, 5),
-                    "category": category,
+                    "키워드": keyword,
+                    "PC 검색량": pcQcCnt,
+                    "모바일 검색량": mobileQcCnt,
+                    "총 검색량": totalQcCnt,
+                    "상품수": productsCnt,
+                    "비율": round(productsCnt / totalQcCnt, 5),
+                    "PC 클릭률": pcCtr,
+                    "모바일 클릭률": mobileCtr,
+                    "카테고리": category,
                 }
                 result["keywords"].append(keyword_instance)
-                time.sleep(0.5)
+                time.sleep(0.20)
             else:
                 print("skip")
 
