@@ -214,8 +214,9 @@ def get_result(coreKeyword):
                 print("skip")
 
 
-search_keyword = input("메인 키워드 입력: ")
-get_result(search_keyword)
-export_result(search_keyword)
-
-os.system("pause")
+while True:
+    result = {"keywords": []}
+    duplicate_check_list = []
+    search_keyword = input("메인 키워드 입력: ")
+    get_result(search_keyword)
+    export_result(search_keyword)
